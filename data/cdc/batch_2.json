@@ -1,0 +1,3 @@
+{"station_id":"CSM00078762","station_name":"JUAN SANTAMARIA INTERNATIONAL","country_code":"CS","region_name":"Central America","coverage_tier":"high","monitoring_status":"priority","sequence_ts":"2024-02-05T08:00:00Z","operation":"UPDATE"}
+{"station_id":"MXM00076548","station_name":"TAMPICO TAMPS","country_code":"MX","region_name":"Mexico","coverage_tier":"medium","monitoring_status":"active","sequence_ts":"2024-02-05T08:00:00Z","operation":"INSERT"}
+{"station_id":"HO000078711","station_name":"PUERTO LEMPIRA","country_code":"HO","region_name":"Central America","coverage_tier":"medium","monitoring_status":"retired","sequence_ts":"2024-02-05T08:00:00Z","operation":"DELETE"}

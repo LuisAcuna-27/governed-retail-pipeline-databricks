@@ -1,0 +1,75 @@
+resources:
+  jobs:
+    weather_job:
+      name: ${bundle.target}-${var.student_name}-weather-job
+      parameters:
+        - name: environment
+          default: ${bundle.target}
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${resources.schemas.project_schema.name}
+        - name: row_count_threshold
+          default: ${var.row_count_threshold}
+      email_notifications:
+        on_success:
+          - ${var.notification_email}
+        on_failure:
+          - ${var.notification_email}
+        no_alert_for_skipped_runs: false
+      tasks:
+        - task_key: run_weather_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.weather_pipeline.id}
+            full_refresh: false
+
+        - task_key: validate_gold
+          depends_on:
+            - task_key: run_weather_pipeline
+          notebook_task:
+            notebook_path: ../src/validate_gold.py
+            base_parameters:
+              environment: "{{job.parameters.environment}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+          environment_key: default
+
+        - task_key: gold_has_rows
+          depends_on:
+            - task_key: validate_gold
+          condition_task:
+            op: GREATER_THAN_OR_EQUAL
+            left: "{{tasks.validate_gold.values.gold_row_count}}"
+            right: "{{job.parameters.row_count_threshold}}"
+
+        - task_key: publish_ready
+          depends_on:
+            - task_key: gold_has_rows
+              outcome: "true"
+          notebook_task:
+            notebook_path: ../src/publish_summary.py
+            base_parameters:
+              environment: "{{job.parameters.environment}}"
+              validation_status: ready
+          environment_key: default
+
+        - task_key: publish_blocked
+          depends_on:
+            - task_key: gold_has_rows
+              outcome: "false"
+          notebook_task:
+            notebook_path: ../src/publish_summary.py
+            base_parameters:
+              environment: "{{job.parameters.environment}}"
+              validation_status: blocked
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            client: "1"
+
+      tags:
+        project: governed-weather
+        student: ${var.student_name}
+        environment: ${bundle.target}

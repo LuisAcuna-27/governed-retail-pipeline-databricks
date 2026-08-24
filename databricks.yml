@@ -1,0 +1,50 @@
+bundle:
+  name: governed_weather_pipeline
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog used by the target environment.
+  schema:
+    description: Schema that contains the project objects.
+    default: weather_luis_acuna
+  student_name:
+    description: Student identifier required by the pipeline rubric.
+    default: luis_acuna
+  notification_email:
+    description: Email used for Lakeflow Job notifications.
+    default: luis.acuna11@ulatina.net
+  source_table:
+    description: Read-only NOAA Marketplace source table.
+    default: rearc_daily_weather_observations_noaa.esg_noaa_ghcn.noaa_ghcn_daily
+  row_count_threshold:
+    description: Minimum number of rows required in the Gold table.
+    default: "1"
+
+targets:
+  development:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-cbc2bb58-ee6e.cloud.databricks.com
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: dab_lab_dev
+    resources:
+      pipelines:
+        weather_pipeline:
+          development: true
+
+  production:
+    mode: production
+    workspace:
+      host: https://dbc-cbc2bb58-ee6e.cloud.databricks.com
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: dab_lab_prod
+    resources:
+      pipelines:
+        weather_pipeline:
+          development: false
