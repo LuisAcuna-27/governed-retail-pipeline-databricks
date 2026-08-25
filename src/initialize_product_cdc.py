@@ -112,7 +112,9 @@ else:
     if generated_rows != 99:
         raise ValueError(f"Expected 99 initial CDC rows, generated {generated_rows}")
 
-    batch_df.coalesce(1).write.mode("errorifexists").json(batch_path)
+    # This branch only runs when the directory has no data files. Overwrite is
+    # supported by serverless Spark Connect and also repairs an empty directory
+    # left by an interrupted first initialization.
+    batch_df.coalesce(1).write.mode("overwrite").json(batch_path)
     dbutils.jobs.taskValues.set(key="batch_1_status", value="created")
     print(f"created {generated_rows} JSON CDC records at {batch_path}")
-
