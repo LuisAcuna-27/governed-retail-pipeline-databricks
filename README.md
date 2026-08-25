@@ -73,8 +73,11 @@ databricks bundle run -t development retail_job
 ```
 
 El primer lote se genera ejecutando `sql/generate_batch_1.sql` después de crear
-el schema y el Volume. Tras la primera ejecución se carga `batch_2.json` en la
-raíz del Volume y se vuelve a ejecutar el Job para demostrar el historial SCD2.
+el schema y el Volume. El Job ejecuta esta inicialización automáticamente y la
+omite de forma idempotente cuando `batch_1` ya existe. También crea o reemplaza
+la Metric View después del pipeline. Tras la primera ejecución se carga
+`batch_2.json` en la raíz del Volume y se vuelve a ejecutar el Job para demostrar
+el historial SCD2.
 
 ## Ambientes y estrategia Git
 
@@ -82,5 +85,5 @@ raíz del Volume y se vuelve a ejecutar el Job para demostrar el historial SCD2.
 - `dev`: integración y despliegue a `dab_lab_dev`.
 - `main`: producción en `dab_lab_prod`, mediante Pull Request desde `dev`.
 - GitHub Environments: `dev` y `prod` con credenciales OAuth M2M.
-- Los workflows permanecen protegidos por `CI_ENABLED`; debe establecerse en
-  `true` cuando los secretos estén configurados.
+- Los workflows permanecen protegidos por `CI_ENABLED` y usan credenciales OAuth
+  M2M almacenadas por separado en los Environments `dev` y `prod`.

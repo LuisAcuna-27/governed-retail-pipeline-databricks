@@ -49,4 +49,5 @@ streaming, calidad, CDC SCD Tipo 2, capa semántica, orquestación y CI/CD.
 3. Implementación del Bundle y pipeline — completada.
 4. Prueba de lote 1 y orquestación — completada.
 5. Prueba de lote 2 y SCD2 — completada.
-6. Documentación, dashboard y CI/CD — completada; activación de credenciales pendiente.
+6. Documentación y dashboard — completados.
+7. CI/CD reproducible y credenciales OAuth — implementado; validación de Actions en curso.

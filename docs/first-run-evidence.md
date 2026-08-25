@@ -62,6 +62,19 @@ La Metric View mostró la reclasificación sin cambiar el total de ingresos:
 | `managed` | 3,959,339 |
 | `standard` | 1,553,263 |
 
+## Ejecución reproducible
+
+La ejecución `499707929365566` terminó `SUCCESS` después de incorporar las
+tareas automáticas al Job:
+
+1. `initialize_product_cdc`: comprueba o crea `batch_1` sin sobrescribirlo;
+2. `run_retail_pipeline`: procesa Bronze, Silver, SCD2 y Gold;
+3. `create_metric_view`: crea y valida `retail_product_metrics`;
+4. `validate_gold`, If/Else y For Each: comprueban y resumen las capas.
+
+Esto elimina la dependencia de ejecutar manualmente SQL para una instalación
+limpia mediante CI/CD.
+
 ## Enlaces
 
 - Pipeline: <https://dbc-cbc2bb58-ee6e.cloud.databricks.com/pipelines/74146ccc-f59f-4acc-adaf-711f1c5233bc?w=7474647652788276>

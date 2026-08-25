@@ -2,6 +2,7 @@ resources:
   jobs:
     retail_job:
       name: ${bundle.target}-${var.student_name}-retail-job
+      max_concurrent_runs: 1
       parameters:
         - name: environment
           default: ${bundle.target}
@@ -18,14 +19,33 @@ resources:
           - ${var.notification_email}
         no_alert_for_skipped_runs: false
       tasks:
+        - task_key: initialize_product_cdc
+          notebook_task:
+            notebook_path: ../src/initialize_product_cdc.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              source_table: ${var.source_table}
+
         - task_key: run_retail_pipeline
+          depends_on:
+            - task_key: initialize_product_cdc
           pipeline_task:
             pipeline_id: ${resources.pipelines.retail_pipeline.id}
             full_refresh: false
 
-        - task_key: validate_gold
+        - task_key: create_metric_view
           depends_on:
             - task_key: run_retail_pipeline
+          notebook_task:
+            notebook_path: ../src/create_metric_view.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+
+        - task_key: validate_gold
+          depends_on:
+            - task_key: create_metric_view
           notebook_task:
             notebook_path: ../src/validate_gold.py
             base_parameters:
