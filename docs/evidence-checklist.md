@@ -30,4 +30,6 @@
 - [x] Workflows de PR, `dev` y `main` definidos.
 - [x] Dashboard AI/BI desplegado con tres visualizaciones sobre la Metric View.
 - [x] Credenciales OAuth M2M configuradas en GitHub Environments.
-- [ ] `CI_ENABLED=true` y ejecución de GitHub Actions comprobada.
+- [x] `CI_ENABLED=true` y validación de PR comprobada.
+- [x] Despliegue y Job de desarrollo ejecutados desde GitHub Actions.
+- [x] Despliegue y Job de producción ejecutados desde GitHub Actions.
