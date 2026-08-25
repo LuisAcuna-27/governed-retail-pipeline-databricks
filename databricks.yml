@@ -1,0 +1,50 @@
+bundle:
+  name: governed_retail_pipeline
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog used by the target environment.
+  schema:
+    description: Schema that contains the project objects.
+    default: retail_luis_acuna
+  student_name:
+    description: Student identifier required by the pipeline rubric.
+    default: luis_acuna
+  notification_email:
+    description: Email used for Lakeflow Job notifications.
+    default: luis.acuna11@ulatina.net
+  source_table:
+    description: Read-only retail orders Marketplace source table.
+    default: databricks_simulated_retail_customer_data.v01.sales_orders
+  row_count_threshold:
+    description: Minimum number of rows required in the Gold table.
+    default: "1"
+
+targets:
+  development:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-cbc2bb58-ee6e.cloud.databricks.com
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: dab_lab_dev
+    resources:
+      pipelines:
+        retail_pipeline:
+          development: true
+
+  production:
+    mode: production
+    workspace:
+      host: https://dbc-cbc2bb58-ee6e.cloud.databricks.com
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: dab_lab_prod
+    resources:
+      pipelines:
+        retail_pipeline:
+          development: false

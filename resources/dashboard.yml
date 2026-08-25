@@ -1,0 +1,9 @@
+resources:
+  dashboards:
+    retail_dashboard:
+      display_name: ${bundle.target}-${var.student_name}-retail-dashboard
+      file_path: ../dashboards/retail_dashboard.lvdash.json
+      warehouse_id: c0c538b9dad2142f
+      dataset_catalog: ${var.catalog}
+      dataset_schema: ${resources.schemas.project_schema.name}
+

@@ -1,0 +1,28 @@
+resources:
+  pipelines:
+    retail_pipeline:
+      name: ${bundle.target}-${var.student_name}-retail-pipeline
+      catalog: ${var.catalog}
+      schema: ${resources.schemas.project_schema.name}
+      serverless: true
+      continuous: false
+      edition: ADVANCED
+      channel: CURRENT
+      photon: true
+      libraries:
+        - notebook:
+            path: ../src/retail_pipeline.sql
+      configuration:
+        catalog: ${var.catalog}
+        schema: ${resources.schemas.project_schema.name}
+        student_name: ${var.student_name}
+        source_table: ${var.source_table}
+        cdc_volume_path: /Volumes/${var.catalog}/${resources.schemas.project_schema.name}/${resources.volumes.product_cdc_volume.name}
+      event_log:
+        catalog: ${var.catalog}
+        schema: ${resources.schemas.project_schema.name}
+        name: retail_pipeline_event_log
+      tags:
+        project: governed-retail-order-analytics
+        student: ${var.student_name}
+        environment: ${bundle.target}

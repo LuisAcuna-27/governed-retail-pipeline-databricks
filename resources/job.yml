@@ -1,0 +1,102 @@
+resources:
+  jobs:
+    retail_job:
+      name: ${bundle.target}-${var.student_name}-retail-job
+      max_concurrent_runs: 1
+      parameters:
+        - name: environment
+          default: ${bundle.target}
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${resources.schemas.project_schema.name}
+        - name: row_count_threshold
+          default: ${var.row_count_threshold}
+      email_notifications:
+        on_success:
+          - ${var.notification_email}
+        on_failure:
+          - ${var.notification_email}
+        no_alert_for_skipped_runs: false
+      tasks:
+        - task_key: initialize_product_cdc
+          notebook_task:
+            notebook_path: ../src/initialize_product_cdc.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              source_table: ${var.source_table}
+
+        - task_key: run_retail_pipeline
+          depends_on:
+            - task_key: initialize_product_cdc
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.retail_pipeline.id}
+            full_refresh: false
+
+        - task_key: create_metric_view
+          depends_on:
+            - task_key: run_retail_pipeline
+          notebook_task:
+            notebook_path: ../src/create_metric_view.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+
+        - task_key: validate_gold
+          depends_on:
+            - task_key: create_metric_view
+          notebook_task:
+            notebook_path: ../src/validate_gold.py
+            base_parameters:
+              environment: "{{job.parameters.environment}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+
+        - task_key: gold_has_rows
+          depends_on:
+            - task_key: validate_gold
+          condition_task:
+            op: GREATER_THAN_OR_EQUAL
+            left: "{{tasks.validate_gold.values.gold_row_count}}"
+            right: "{{job.parameters.row_count_threshold}}"
+
+        - task_key: publish_ready
+          depends_on:
+            - task_key: gold_has_rows
+              outcome: "true"
+          notebook_task:
+            notebook_path: ../src/publish_summary.py
+            base_parameters:
+              environment: "{{job.parameters.environment}}"
+              validation_status: ready
+
+        - task_key: publish_blocked
+          depends_on:
+            - task_key: gold_has_rows
+              outcome: "false"
+          notebook_task:
+            notebook_path: ../src/publish_summary.py
+            base_parameters:
+              environment: "{{job.parameters.environment}}"
+              validation_status: blocked
+
+        - task_key: summarize_layers
+          depends_on:
+            - task_key: publish_ready
+          for_each_task:
+            inputs: '["bronze_orders", "silver_order_items", "gold_retail_monthly"]'
+            concurrency: 3
+            task:
+              task_key: summarize_layer
+              notebook_task:
+                notebook_path: ../src/summarize_layer.py
+                base_parameters:
+                  catalog: "{{job.parameters.catalog}}"
+                  schema: "{{job.parameters.schema}}"
+                  table_name: "{{input}}"
+
+      tags:
+        project: governed-retail-order-analytics
+        student: ${var.student_name}
+        environment: ${bundle.target}
