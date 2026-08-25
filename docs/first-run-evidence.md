@@ -75,9 +75,26 @@ tareas automáticas al Job:
 Esto elimina la dependencia de ejecutar manualmente SQL para una instalación
 limpia mediante CI/CD.
 
+## Evidencia CI/CD
+
+- Validación PR retail: `SUCCESS`.
+- Desarrollo: GitHub Actions run `32803455440`, `SUCCESS` en 2m54s.
+- Producción: GitHub Actions run `32803696618`, `SUCCESS` en 2m56s.
+- `CI_ENABLED=true`.
+- Autenticación separada: `sp-dab-dev` y `sp-dab-prod` mediante OAuth M2M.
+- Secretos aislados en los GitHub Environments `dev` y `prod`.
+- Permiso de la fuente limitado a `USE CATALOG`, `USE SCHEMA` y `SELECT` sobre
+  `sales_orders`; ambos principals tienen `CAN_USE` en el SQL Warehouse.
+
+El workflow de desarrollo demostró la creación del lote 1 en un schema limpio,
+el despliegue del Bundle y la ejecución completa del Job sin intervención
+manual. La promoción `dev -> main` repitió la misma prueba en `dab_lab_prod`.
+
 ## Enlaces
 
 - Pipeline: <https://dbc-cbc2bb58-ee6e.cloud.databricks.com/pipelines/74146ccc-f59f-4acc-adaf-711f1c5233bc?w=7474647652788276>
 - Job: <https://dbc-cbc2bb58-ee6e.cloud.databricks.com/jobs/25235949448081?w=7474647652788276>
 - Dashboard: <https://dbc-cbc2bb58-ee6e.cloud.databricks.com/dashboardsv3/01f1a02a3b671f0384f43f3748b05845/published?w=7474647652788276>
 - Schema: <https://dbc-cbc2bb58-ee6e.cloud.databricks.com/explore/data/dab_lab_dev/dev_luis_acuna11_retail_luis_acuna?w=7474647652788276>
+- GitHub Actions dev: <https://github.com/LuisAcuna-27/governed-retail-pipeline-databricks/actions/runs/32803455440>
+- GitHub Actions prod: <https://github.com/LuisAcuna-27/governed-retail-pipeline-databricks/actions/runs/32803696618>
