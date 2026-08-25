@@ -1,5 +1,9 @@
 # Governed Airline Performance Pipeline on Databricks
 
+Para comprender el dataset antes de revisar el código, consulta
+[`docs/dataset-walkthrough.md`](docs/dataset-walkthrough.md) y ejecuta las consultas
+de [`sql/explore_dataset.sql`](sql/explore_dataset.sql) una sección a la vez.
+
 Proyecto final del Módulo 3 del Técnico en Ingeniería de Datos con Databricks.
 
 El repositorio implementa un pipeline gobernado de desempeño aéreo histórico con arquitectura medallion, Lakeflow Declarative Pipelines, CDC con SCD Tipo 2, Metric Views, dashboard AI/BI y CI/CD mediante Databricks Asset Bundles y GitHub Actions.
