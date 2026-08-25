@@ -1,33 +1,53 @@
-# Documento de decisiones - borrador vivo
+# Registro de decisiones
 
-## Dataset y caso de negocio
+## D1. Migrar a Simulated Retail Customer Data
 
-Se evaluó primero NOAA GHCN-Daily por su actualidad y riqueza climática. La exploración confirmó buena calidad, pero la ejecución del pipeline devolvió `DS_TIME_TRAVEL_NOT_PERMITTED`: el proveedor permite consultas batch, pero no comparte el historial Delta requerido por `STREAM()`. La alternativa batch también fue rechazada por `CREATE_APPEND_ONCE_FLOW_FROM_BATCH_QUERY_NOT_ALLOWED`. Como la rúbrica exige una Bronze Streaming Table del hecho, se aplicó el plan de contingencia documentado.
+La alternativa aérea funcionaba técnicamente, pero complicaba la explicación:
+el número de vuelo no era único, la fuente era antigua y la relación con una
+dimensión sintética resultaba menos intuitiva. Se migró a retail porque
+`sales_orders` ofrece `order_number`, productos embebidos y `product_id`, una
+unión natural entre hechos y la dimensión gobernada.
 
-Airline Performance Data sí admite streaming desde Marketplace y contiene 10,602,522 filas. Se utiliza un extracto determinístico del primer semestre de 1999. La antigüedad se reconoce expresamente: el dashboard responde una pregunta histórica y no pretende describir operaciones actuales.
+La fuente retail también es histórica y simulada. Esto es aceptable porque la
+pregunta se presenta como caso analítico de demostración y no como información
+comercial vigente. Se documenta expresamente para evitar conclusiones engañosas.
 
-## Dimensión CDC
+## D2. Usar solamente `sales_orders`
 
-La dimensión representa el portafolio gobernado de aerolíneas. El batch 2 actualiza American Airlines, inserta Southwest Airlines y elimina `ZZ`, un registro sintético de control creado únicamente para demostrar el delete sin retirar una aerolínea real del análisis Gold.
+El listing también contiene `customers` y `sales`, pero no son necesarias para
+cumplir el alcance. Reducir la fuente a una sola tabla mantiene el linaje claro:
+orden -> línea de producto -> dimensión de producto -> métricas mensuales.
 
-## Capas
+## D3. CDC separado del hecho
 
-- Bronze conserva el hecho del Marketplace y los eventos CDC del Volume.
-- Silver tipa fechas y métricas, normaliza códigos, elimina duplicados y deriva ruta, hora y resultado operativo.
-- Gold une los vuelos con la versión vigente de `dim_airline` y calcula métricas mensuales por aerolínea y ruta.
-- La Metric View expone medidas y dimensiones de negocio y será la única fuente del dashboard.
+`sales_orders` es una fuente de hechos de solo lectura. El estudiante genera la
+dimensión `dim_product` en dos lotes JSON y la mantiene con AUTO CDC SCD2:
 
-## Expectations
+- llave de negocio: `product_id`;
+- secuencia: `sequence_ts`;
+- delete: `operation = 'DELETE'`;
+- lote 1: 98 productos reales y un control sintético;
+- lote 2: reclasificación, alta nueva y retiro del control.
 
-- Ruta sin origen o destino: `DROP ROW`, porque no puede alimentar agregaciones por ruta.
-- Distancia no positiva: `FAIL UPDATE`, porque indicaría corrupción de una métrica estructural del hecho.
-- Retraso de llegada ausente en un vuelo no cancelado ni desviado: `WARN`, porque debe observarse sin descartar automáticamente el registro.
+El producto de control evita borrar del análisis un producto real únicamente
+para demostrar el comportamiento DELETE.
 
-## Pendiente de completar con evidencia
+## D4. Conservar el snapshot más reciente
 
-- Capturas batch 1/batch 2 y explicación de `__START_AT`/`__END_AT`.
-- Grafo y corrida exitosa del Job.
-- Pull Requests y GitHub Actions.
-- Dashboard y principales insights.
-- Grant de Unity Catalog.
-- Reflexión final.
+La fuente contiene 4,074 filas para 4,000 números de orden. Silver aplica
+`ROW_NUMBER()` por `order_number`, ordenado por `order_datetime DESC`, antes de
+parsear y explotar `ordered_products`. Así la deduplicación ocurre en el grano
+correcto y produce 7,997 líneas de producto.
+
+## D5. Calidad con tres comportamientos
+
+- `valid_order_key`: `FAIL UPDATE`, porque una línea sin orden invalida la carga.
+- `valid_product_key`: `DROP ROW`, porque no puede unirse a la dimensión.
+- `valid_commercial_values`: `WARN`, para observar cantidades o precios
+  inválidos sin ocultar el resto de la actualización.
+
+## D6. Estado anterior preservado
+
+La rama remota `feature/airline-fallback` conserva el prototipo aéreo. Sus
+recursos de Databricks no se destruyeron durante la migración; el proyecto retail
+se desplegó con un nombre de Bundle y schema independientes.

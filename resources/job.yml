@@ -1,7 +1,7 @@
 resources:
   jobs:
-    airline_job:
-      name: ${bundle.target}-${var.student_name}-airline-job
+    retail_job:
+      name: ${bundle.target}-${var.student_name}-retail-job
       parameters:
         - name: environment
           default: ${bundle.target}
@@ -18,14 +18,14 @@ resources:
           - ${var.notification_email}
         no_alert_for_skipped_runs: false
       tasks:
-        - task_key: run_airline_pipeline
+        - task_key: run_retail_pipeline
           pipeline_task:
-            pipeline_id: ${resources.pipelines.airline_pipeline.id}
+            pipeline_id: ${resources.pipelines.retail_pipeline.id}
             full_refresh: false
 
         - task_key: validate_gold
           depends_on:
-            - task_key: run_airline_pipeline
+            - task_key: run_retail_pipeline
           notebook_task:
             notebook_path: ../src/validate_gold.py
             base_parameters:
@@ -65,7 +65,7 @@ resources:
           depends_on:
             - task_key: publish_ready
           for_each_task:
-            inputs: '["bronze_flights", "silver_flights", "gold_airline_monthly"]'
+            inputs: '["bronze_orders", "silver_order_items", "gold_retail_monthly"]'
             concurrency: 3
             task:
               task_key: summarize_layer
@@ -77,6 +77,6 @@ resources:
                   table_name: "{{input}}"
 
       tags:
-        project: governed-airline-performance
+        project: governed-retail-order-analytics
         student: ${var.student_name}
         environment: ${bundle.target}

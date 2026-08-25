@@ -1,3 +1,3 @@
-{"carrier_code":"AA","carrier_name":"American Airlines","headquarters_region":"United States","service_tier":"priority","monitoring_status":"priority_review","sequence_ts":"1999-07-01T00:00:00Z","operation":"UPDATE"}
-{"carrier_code":"WN","carrier_name":"Southwest Airlines","headquarters_region":"United States","service_tier":"standard","monitoring_status":"active","sequence_ts":"1999-07-01T00:00:00Z","operation":"INSERT"}
-{"carrier_code":"ZZ","carrier_name":"Synthetic Control Carrier","headquarters_region":"Test","service_tier":"control","monitoring_status":"retired","sequence_ts":"1999-07-01T00:00:00Z","operation":"DELETE"}
+{"product_id":"AVqVGaCCU2_QcyX9Ozcf","product_name":"15.4 NakBook Pro with Touch Bar (Late 2016, Space Gray)","portfolio_tier":"critical","lifecycle_status":"active","monitoring_status":"priority_review","sequence_ts":"2019-11-15T00:00:00Z","operation":"UPDATE"}
+{"product_id":"SYN-NEW-PRODUCT","product_name":"Synthetic Launch Product","portfolio_tier":"incubation","lifecycle_status":"planned","monitoring_status":"active","sequence_ts":"2019-11-15T00:00:00Z","operation":"INSERT"}
+{"product_id":"SYN-CONTROL-PRODUCT","product_name":"Synthetic Control Product","portfolio_tier":"control","lifecycle_status":"retired","monitoring_status":"retired","sequence_ts":"2019-11-15T00:00:00Z","operation":"DELETE"}

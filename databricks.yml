@@ -1,5 +1,5 @@
 bundle:
-  name: governed_airline_pipeline
+  name: governed_retail_pipeline
 
 include:
   - resources/*.yml
@@ -9,7 +9,7 @@ variables:
     description: Unity Catalog catalog used by the target environment.
   schema:
     description: Schema that contains the project objects.
-    default: airline_luis_acuna
+    default: retail_luis_acuna
   student_name:
     description: Student identifier required by the pipeline rubric.
     default: luis_acuna
@@ -17,8 +17,8 @@ variables:
     description: Email used for Lakeflow Job notifications.
     default: luis.acuna11@ulatina.net
   source_table:
-    description: Read-only Airline Performance Marketplace source table.
-    default: databricks_airline_performance_data.v01.flights_small
+    description: Read-only retail orders Marketplace source table.
+    default: databricks_simulated_retail_customer_data.v01.sales_orders
   row_count_threshold:
     description: Minimum number of rows required in the Gold table.
     default: "1"
@@ -34,7 +34,7 @@ targets:
       catalog: dab_lab_dev
     resources:
       pipelines:
-        airline_pipeline:
+        retail_pipeline:
           development: true
 
   production:
@@ -46,5 +46,5 @@ targets:
       catalog: dab_lab_prod
     resources:
       pipelines:
-        airline_pipeline:
+        retail_pipeline:
           development: false

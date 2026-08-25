@@ -1,219 +1,104 @@
-# Guía completa del dataset y su uso en el proyecto
+# Guía completa del dataset retail
 
-## 1. Qué entrega originalmente Databricks Marketplace
+## 1. Qué instaló Marketplace
 
-El listing instala el catálogo compartido `databricks_airline_performance_data`.
-Dentro del esquema `v01` existen cuatro tablas originales del proveedor:
+El listing `Simulated Retail Customer Data` creó el catálogo de solo lectura
+`databricks_simulated_retail_customer_data`. En su schema `v01` existen:
 
-- `flights`
-- `flights_cluster_id`
-- `flights_cluster_id_flightnum`
-- `flights_small`
+| Tabla original | Filas | Uso en el proyecto |
+|---|---:|---|
+| `customers` | 28,813 | No se usa; está fuera del alcance. |
+| `sales` | 360 | No se usa; es una agregación pequeña. |
+| `sales_orders` | 4,074 | Fuente principal del hecho. |
 
-Estas tablas no fueron creadas ni modificadas por el proyecto. El pipeline consume
-exclusivamente:
+La única tabla que el pipeline lee es:
 
-`databricks_airline_performance_data.v01.flights_small`
+`databricks_simulated_retail_customer_data.v01.sales_orders`
 
-`flights_small` es una tabla Delta append-only de aproximadamente 131 MB, formada
-por 17 archivos. Contiene 10,602,522 registros: 5,384,713 de 1998 y 5,217,809 de
-1999. El proyecto toma solamente enero-junio de 1999, que produce 2,710,845 filas.
+## 2. Qué representa una fila original
 
-Las otras tres tablas son variantes entregadas por el mismo proveedor. No son
-dependencias del pipeline y no debemos presentarlas como tablas creadas por
-nosotros.
+Una fila es un snapshot de una orden, no necesariamente una orden única. Hay
+4,074 filas pero 4,000 valores distintos de `order_number`; por eso Silver
+conserva la fila más reciente de cada orden.
 
-## 2. Qué representa una fila de `flights_small`
-
-Una fila representa la operación de un vuelo en una fecha y ruta determinadas.
-La tabla no declara una llave primaria y `FlightNum` no es único por sí solo.
-
-### Fecha
-
-| Columna original | Significado |
+| Columna | Significado |
 |---|---|
-| `Year` | Año del vuelo. |
-| `Month` | Mes del vuelo. |
-| `DayofMonth` | Día del mes. |
-| `DayOfWeek` | Día de la semana codificado numéricamente. |
+| `order_number` | Identificador de la orden; llave para deduplicar el hecho. |
+| `order_datetime` | Fecha/hora Unix en segundos; ordena los snapshots. |
+| `customer_id` | Identificador del cliente. |
+| `customer_name` | Nombre del cliente en el snapshot. |
+| `number_of_line_items` | Cantidad declarada de líneas. |
+| `ordered_products` | JSON con los productos, cantidades, precios y promoción. |
+| `promo_info` | Información promocional adicional en texto. |
+| `clicked_items` | Interacciones previas del cliente en texto. |
 
-### Horarios
+`ordered_products` contiene un arreglo. Cada elemento incluye `id`, `name`,
+`price`, `qty`, `curr`, `unit` y un struct opcional `promotion_info`.
 
-`CRS` significa horario programado por el sistema de reservas.
+## 3. Llaves: qué identifica cada cosa
 
-| Columna original | Significado |
-|---|---|
-| `CRSDepTime` | Hora programada de salida. |
-| `DepTime` | Hora real de salida. |
-| `CRSArrTime` | Hora programada de llegada. |
-| `ArrTime` | Hora real de llegada. |
+- `order_number` identifica y deduplica la orden.
+- `product_id` identifica el producto después de explotar el JSON.
+- La línea analítica se identifica por la combinación de orden y elemento
+  explotado; no se inventa una llave primaria declarada en la fuente.
+- `product_id` es la llave de negocio de `dim_product` y del AUTO CDC.
+- `sequence_ts` no identifica; ordena las versiones CDC.
 
-### Aerolínea, vuelo y aeronave
+Por tanto, el CDC **no se hace por `order_number`**. Se hace en la dimensión por
+`product_id`, secuenciado por `sequence_ts`.
 
-| Columna original | Significado |
-|---|---|
-| `UniqueCarrier` | Código de la aerolínea, por ejemplo `AA`, `DL` o `WN`. No identifica un vuelo. |
-| `FlightNum` | Número comercial del vuelo; se repite entre fechas y aerolíneas. |
-| `TailNum` | Matrícula o identificador de la aeronave, cuando está disponible. |
+## 4. Transformación por capas
 
-### Ruta
+| Objeto del proyecto | Tipo | Función |
+|---|---|---|
+| `bronze_orders` | Streaming Table | Copia streaming de los 4,074 snapshots. |
+| `bronze_product_cdc` | Streaming Table | Auto Loader sobre los lotes JSON propios. |
+| `silver_order_items` | Materialized View | Deduplica órdenes, tipa, parsea, explota y valida. |
+| `dim_product` | Streaming Table SCD2 | Historial del portafolio por `product_id`. |
+| `gold_retail_order_items` | Materialized View | Une cada línea con la versión vigente del producto. |
+| `gold_retail_monthly` | Materialized View | Agrega mes, producto y atributos gobernados. |
+| `retail_product_metrics` | Metric View | Expone medidas y dimensiones para AI/BI. |
+| `retail_pipeline_event_log` | Event Log | Guarda progreso y métricas de expectations. |
 
-| Columna original | Significado |
-|---|---|
-| `Origin` | Código del aeropuerto de origen. |
-| `Dest` | Código del aeropuerto de destino. |
-| `Distance` | Distancia de la ruta en millas. |
+Silver deriva `order_timestamp`, `order_date`, `order_month`, `line_revenue`,
+`has_promotion` y `line_item_count_matches`. Después de la deduplicación y el
+`EXPLODE`, produce 7,997 líneas pertenecientes a 4,000 órdenes y 98 productos.
 
-### Duraciones
+## 5. Cómo funciona el CDC
 
-| Columna original | Significado |
-|---|---|
-| `ActualElapsedTime` | Duración real total. |
-| `CRSElapsedTime` | Duración total programada. |
-| `AirTime` | Tiempo real en el aire. |
-| `TaxiIn` | Tiempo de rodaje al llegar. |
-| `TaxiOut` | Tiempo de rodaje antes de despegar. |
+El lote 1 no se copia manualmente desde Marketplace. El script
+`sql/generate_batch_1.sql` obtiene los 98 productos reales y los clasifica según
+su decil de ingresos:
 
-### Retrasos e irregularidades
+- decil 1: `strategic`;
+- deciles 2 a 4: `managed`;
+- resto: `standard`.
 
-| Columna original | Significado |
-|---|---|
-| `DepDelay` | Minutos de retraso de salida; un valor negativo significa salida anticipada. |
-| `ArrDelay` | Minutos de retraso de llegada; un valor negativo significa llegada anticipada. |
-| `Cancelled` | Indicador numérico de cancelación. |
-| `CancellationCode` | Motivo codificado de cancelación, si está disponible. |
-| `Diverted` | Indicador de vuelo desviado. |
+También agrega `SYN-CONTROL-PRODUCT`, usado solo para demostrar un delete seguro.
+El lote 2 contiene tres eventos:
 
-### Causas y banderas de retraso
+1. UPDATE del producto de mayores ingresos de `strategic` a `critical`;
+2. INSERT de `SYN-NEW-PRODUCT`;
+3. DELETE de `SYN-CONTROL-PRODUCT`.
 
-| Columna original | Significado |
-|---|---|
-| `CarrierDelay` | Retraso atribuido a la aerolínea. |
-| `WeatherDelay` | Retraso atribuido al clima. |
-| `NASDelay` | Retraso atribuido al sistema nacional de aviación. |
-| `SecurityDelay` | Retraso atribuido a seguridad. |
-| `LateAircraftDelay` | Retraso por llegada tardía de la aeronave anterior. |
-| `IsArrDelayed` | Bandera textual de retraso en llegada. |
-| `IsDepDelayed` | Bandera textual de retraso en salida. |
+AUTO CDC conserva `__START_AT` y `__END_AT`. Gold filtra `__END_AT IS NULL`, por
+lo que consume la versión vigente sin perder el historial auditable.
 
-Varias métricas numéricas están almacenadas originalmente como `STRING`. Por eso
-Silver las convierte explícitamente a `DOUBLE` o `INT`.
+## 6. Cómo se apega a la rúbrica
 
-## 3. La tabla de vuelos no recibe CDC
+- Hecho Marketplace: `sales_orders` entra a una Bronze Streaming Table.
+- Datos propios: dos lotes JSON para la dimensión CDC.
+- Auto Loader: ingestión incremental de los archivos del Volume.
+- AUTO CDC: SCD Tipo 2 con llave, secuencia y delete explícitos.
+- Silver: tipado, deduplicación, columnas derivadas y tres expectations con
+  comportamientos FAIL, DROP y WARN.
+- Gold: unión con la dimensión vigente y agregación de negocio.
+- Semantic layer: seis dimensiones y seis medidas en la Metric View.
+- Orquestación: Pipeline Task, If/Else, For Each, parámetros y correo.
+- CI/CD: Bundle y GitHub Actions separados para `dev` y `main`.
 
-La tabla del Marketplace se ingiere como hecho mediante `STREAM()`:
+## 7. Cómo verlo
 
-```sql
-FROM STREAM(databricks_airline_performance_data.v01.flights_small)
-WHERE Year = 1999 AND Month BETWEEN 1 AND 6
-```
-
-No afirmamos que tenga una llave primaria. En Silver se construye una llave
-compuesta para deduplicar:
-
-1. fecha del vuelo;
-2. código de aerolínea;
-3. número de vuelo;
-4. aeropuerto de origen;
-5. aeropuerto de destino;
-6. hora programada de salida.
-
-## 4. De dónde sale `carrier_code`
-
-En la tabla original se llama `UniqueCarrier`. Silver lo normaliza y le da un
-nombre más claro:
-
-```sql
-UPPER(TRIM(UniqueCarrier)) AS carrier_code
-```
-
-Por lo tanto:
-
-`flights_small.UniqueCarrier` → `silver_flights.carrier_code`
-
-`carrier_code` identifica una aerolínea, no un vuelo.
-
-## 5. Qué datos creamos nosotros para el CDC
-
-La rúbrica requiere demostrar eventos insert, update y delete sobre una dimensión.
-Para ello se crean dos archivos JSON sintéticos en `data/cdc`.
-
-Cada evento contiene:
-
-| Campo sintético | Función |
-|---|---|
-| `carrier_code` | Llave de negocio de la dimensión de aerolíneas. |
-| `carrier_name` | Nombre legible de la aerolínea. |
-| `headquarters_region` | Región administrativa. |
-| `service_tier` | Clasificación usada para segmentar. |
-| `monitoring_status` | Estado de monitoreo. |
-| `sequence_ts` | Orden temporal del CDC. |
-| `operation` | `INSERT`, `UPDATE` o `DELETE`. |
-
-AUTO CDC está configurado así:
-
-```sql
-KEYS (carrier_code)
-APPLY AS DELETE WHEN operation = 'DELETE'
-SEQUENCE BY sequence_ts
-COLUMNS * EXCEPT (operation)
-STORED AS SCD TYPE 2
-```
-
-Batch 1 crea la situación inicial. Batch 2:
-
-- actualiza `AA` de `standard` a `priority`;
-- inserta `WN` como Southwest Airlines;
-- elimina lógicamente `ZZ`, el registro sintético de control.
-
-## 6. Relación entre los dos flujos
-
-El hecho y la dimensión se unen por el código de aerolínea:
-
-```text
-flights_small.UniqueCarrier
-        ↓ normalización
-silver_flights.carrier_code
-        ↓ JOIN
-dim_airline.carrier_code
-```
-
-La unión no pretende identificar vuelos individuales. Su propósito es enriquecer
-cada vuelo con el nombre, categoría y estado vigentes de su aerolínea.
-
-## 7. Tablas creadas por el proyecto
-
-Todas viven en:
-
-`dab_lab_dev.dev_luis_acuna11_airline_luis_acuna`
-
-| Objeto | Tipo y función |
-|---|---|
-| `bronze_flights` | Streaming Table del extracto original de vuelos. |
-| `bronze_airline_cdc` | Streaming Table creada por Auto Loader desde los JSON del Volume. |
-| `dim_airline` | Streaming Table SCD Type 2 administrada por AUTO CDC. |
-| `silver_flights` | Materialized View tipada, normalizada, deduplicada y validada. |
-| `gold_airline_daily` | Materialized View con vuelos enriquecidos por la dimensión vigente. |
-| `gold_airline_monthly` | Materialized View agregada por mes, aerolínea y ruta. |
-| `airline_performance_metrics` | Metric View que expone medidas y dimensiones al dashboard. |
-| `airline_pipeline_event_log` | Event Log del pipeline y sus expectations. |
-
-## 8. Cómo se apega al proyecto
-
-- Marketplace fact: `flights_small` ingresa como Bronze Streaming Table.
-- CDC sintético: dos lotes JSON llegan a un Unity Catalog Volume.
-- Auto Loader: crea `bronze_airline_cdc` de manera incremental.
-- AUTO CDC: mantiene `dim_airline` como SCD Type 2.
-- Medallion: Bronze, Silver y Gold están separadas.
-- Calidad: Silver utiliza expectations `DROP`, `FAIL` y `WARN`.
-- Semántica: la Metric View es la fuente prevista del dashboard.
-- Orquestación: el Job ejecuta Pipeline, validación, If/Else y ForEach.
-- Gobierno: los objetos están en Unity Catalog y se desplegarán mediante targets
-  independientes de development y production.
-
-## 9. Frase correcta para defender el diseño
-
-La tabla de vuelos no tiene una llave primaria simple y no recibe CDC. Se ingiere
-como un hecho streaming y se deduplica con una llave compuesta. El CDC se aplica a
-una dimensión sintética cuyo grano es una fila por aerolínea; su llave
-`carrier_code` corresponde al código `UniqueCarrier` del hecho.
+Ejecuta [`../sql/explore_dataset.sql`](../sql/explore_dataset.sql) por secciones.
+Las primeras consultas muestran las tablas originales y el JSON; las siguientes
+recorren Bronze, Silver, SCD2, Gold, Metric View y Event Log.

@@ -1,0 +1,137 @@
+{
+  "datasets": [
+    {
+      "name": "monthly_metrics",
+      "displayName": "Monthly Metrics from Metric View",
+      "queryLines": [
+        "SELECT order_month, MEASURE(total_revenue) AS total_revenue, MEASURE(total_units) AS total_units ",
+        "FROM retail_product_metrics ",
+        "GROUP BY order_month ",
+        "ORDER BY order_month"
+      ]
+    },
+    {
+      "name": "portfolio_metrics",
+      "displayName": "Portfolio Metrics from Metric View",
+      "queryLines": [
+        "SELECT portfolio_tier, MEASURE(total_revenue) AS total_revenue, MEASURE(total_units) AS total_units ",
+        "FROM retail_product_metrics ",
+        "GROUP BY portfolio_tier ",
+        "ORDER BY total_revenue DESC"
+      ]
+    },
+    {
+      "name": "product_metrics",
+      "displayName": "Product Metrics from Metric View",
+      "queryLines": [
+        "SELECT product_name, portfolio_tier, MEASURE(total_revenue) AS total_revenue ",
+        "FROM retail_product_metrics ",
+        "GROUP BY product_name, portfolio_tier ",
+        "ORDER BY total_revenue DESC ",
+        "LIMIT 10"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "retail_overview",
+      "displayName": "Retail Overview",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1",
+      "layout": [
+        {
+          "widget": {
+            "name": "monthly_revenue",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "monthly_metrics",
+                  "fields": [
+                    {"name": "order_month", "expression": "`order_month`"},
+                    {"name": "total_revenue", "expression": "`total_revenue`"}
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "frame": {"title": "Ingresos mensuales", "showTitle": true},
+              "encodings": {
+                "x": {"fieldName": "order_month", "displayName": "Mes", "scale": {"type": "temporal"}},
+                "y": {"fieldName": "total_revenue", "displayName": "Ingresos", "scale": {"type": "quantitative", "domain": {"min": 0}}}
+              },
+              "data": {"queryName": "main_query"}
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 12, "height": 6}
+        },
+        {
+          "widget": {
+            "name": "revenue_by_tier",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "portfolio_metrics",
+                  "fields": [
+                    {"name": "portfolio_tier", "expression": "`portfolio_tier`"},
+                    {"name": "total_revenue", "expression": "`total_revenue`"}
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "frame": {"title": "Ingresos por nivel de portafolio", "showTitle": true},
+              "encodings": {
+                "x": {"fieldName": "portfolio_tier", "displayName": "Nivel", "scale": {"type": "categorical"}},
+                "y": {"fieldName": "total_revenue", "displayName": "Ingresos", "scale": {"type": "quantitative", "domain": {"min": 0}}},
+                "color": {"fieldName": "portfolio_tier", "displayName": "Nivel", "scale": {"type": "categorical"}}
+              },
+              "data": {"queryName": "main_query"}
+            }
+          },
+          "position": {"x": 0, "y": 6, "width": 6, "height": 6}
+        },
+        {
+          "widget": {
+            "name": "top_products",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "product_metrics",
+                  "fields": [
+                    {"name": "product_name", "expression": "`product_name`"},
+                    {"name": "total_revenue", "expression": "`total_revenue`"}
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "frame": {"title": "Top 10 productos por ingresos", "showTitle": true},
+              "encodings": {
+                "x": {"fieldName": "product_name", "displayName": "Producto", "scale": {"type": "categorical"}},
+                "y": {"fieldName": "total_revenue", "displayName": "Ingresos", "scale": {"type": "quantitative", "domain": {"min": 0}}}
+              },
+              "data": {"queryName": "main_query"}
+            }
+          },
+          "position": {"x": 6, "y": 6, "width": 6, "height": 6}
+        }
+      ]
+    }
+  ],
+  "uiSettings": {
+    "theme": {"widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"},
+    "applyModeEnabled": false
+  }
+}

@@ -1,73 +1,86 @@
-# Governed Airline Performance Pipeline on Databricks
-
-Para comprender el dataset antes de revisar el código, consulta
-[`docs/dataset-walkthrough.md`](docs/dataset-walkthrough.md) y ejecuta las consultas
-de [`sql/explore_dataset.sql`](sql/explore_dataset.sql) una sección a la vez.
+# Governed Retail Order Analytics Pipeline on Databricks
 
 Proyecto final del Módulo 3 del Técnico en Ingeniería de Datos con Databricks.
-
-El repositorio implementa un pipeline gobernado de desempeño aéreo histórico con arquitectura medallion, Lakeflow Declarative Pipelines, CDC con SCD Tipo 2, Metric Views, dashboard AI/BI y CI/CD mediante Databricks Asset Bundles y GitHub Actions.
+Implementa una arquitectura medallion gobernada con Lakeflow Declarative
+Pipelines, Auto Loader, AUTO CDC SCD Tipo 2, Metric Views, Lakeflow Jobs,
+Databricks Asset Bundles y GitHub Actions.
 
 ## Pregunta de negocio
 
-> ¿Qué aerolíneas, rutas y meses presentaron mayor riesgo operativo de retrasos, cancelaciones y desvíos durante el primer semestre de 1999?
+> ¿Cómo se distribuyen los ingresos, unidades y pedidos mensuales entre los
+> productos y niveles del portafolio, y cómo cambia el análisis cuando un
+> producto se reclasifica?
 
-El proyecto no presenta los resultados como desempeño actual. El periodo histórico se declara de forma explícita en la pregunta, el dashboard y el documento de decisiones.
+## Datos seleccionados
 
-## Fuente principal
+- Listing: `Simulated Retail Customer Data` de Databricks Marketplace.
+- Tabla de hechos: `databricks_simulated_retail_customer_data.v01.sales_orders`.
+- Fuente: 4,074 snapshots de órdenes; el pipeline conserva el snapshot más
+  reciente de 4,000 órdenes y genera 7,997 líneas de producto.
+- Periodo de los datos: 2019-08-01 a 2019-11-14. Es un escenario simulado e
+  histórico; no se presenta como desempeño comercial actual.
+- Dimensión propia: portafolio gobernado de productos, generado por el
+  estudiante y actualizado mediante dos lotes JSON.
 
-- Marketplace: `Airline Performance Data`.
-- Tabla: `databricks_airline_performance_data.v01.flights_small`.
-- Volumen de origen: 10,602,522 vuelos de 1998 y 1999.
-- Extracto reproducible: `Year = 1999` y `Month BETWEEN 1 AND 6`.
-- Dimensión CDC: portafolio gobernado de aerolíneas.
+La tabla `sales_orders` se adapta mejor a la rúbrica que la opción aérea: tiene
+una llave de orden explícita, productos embebidos que permiten modelar el grano
+de línea y una unión natural con la dimensión CDC por `product_id`.
 
 ## Arquitectura
 
 ```text
-Airline Marketplace -----------------------> bronze_flights
-                                                   |
-JSON CDC en Unity Catalog Volume ----------> bronze_airline_cdc
-                                                   |
-                                      silver_flights + dim_airline SCD2
-                                                   |
-                                         gold_airline_monthly
-                                                   |
-                                    airline_performance_metrics
-                                                   |
-                                           Dashboard AI/BI
+Marketplace sales_orders ----------------------> bronze_orders (streaming)
+                                                        |
+JSON en Unity Catalog Volume -> Auto Loader -> bronze_product_cdc (streaming)
+                                                        |
+                               silver_order_items + dim_product SCD2
+                                                        |
+                                      gold_retail_order_items
+                                                        |
+                                        gold_retail_monthly
+                                                        |
+                                       retail_product_metrics
+                                                        |
+                                            Dashboard AI/BI
 ```
 
-Los catálogos `dab_lab_dev` y `dab_lab_prod` separan los ambientes dentro del mismo workspace.
+`sales_orders` es el hecho y no recibe CDC. El CDC se aplica a la dimensión
+independiente `dim_product`; su llave de negocio es `product_id` y el orden de
+los cambios lo controla `sequence_ts`.
 
-## Estructura
+## Componentes principales
 
-```text
-.
-├── databricks.yml
-├── resources/              # Pipeline, Job, schema y Volume como código
-├── src/                    # Transformaciones y notebooks del Job
-├── sql/                    # Definición de la Metric View
-├── data/cdc/               # Lotes sintéticos insert/update/delete
-├── docs/                   # Plan, decisiones y checklist de evidencias
-└── .github/workflows/      # Validación y despliegue dev/prod
-```
+- [`src/retail_pipeline.sql`](src/retail_pipeline.sql): Bronze, Silver, SCD2 y Gold.
+- [`sql/generate_batch_1.sql`](sql/generate_batch_1.sql): lote inicial generado
+  a partir de los 98 productos reales, más un registro sintético de control.
+- [`data/cdc/batch_2.json`](data/cdc/batch_2.json): UPDATE, INSERT y DELETE.
+- [`sql/metric_view.sql`](sql/metric_view.sql): capa semántica gobernada.
+- [`dashboards/retail_dashboard.lvdash.json`](dashboards/retail_dashboard.lvdash.json):
+  dashboard AI/BI que consulta la Metric View.
+- [`sql/explore_dataset.sql`](sql/explore_dataset.sql): recorrido reproducible.
+- [`docs/dataset-walkthrough.md`](docs/dataset-walkthrough.md): explicación del
+  dataset, llaves, capas y relación con la rúbrica.
+- [`docs/first-run-evidence.md`](docs/first-run-evidence.md): ejecuciones y
+  resultados comprobados en Databricks.
 
-## Validación y despliegue
+## Despliegue en desarrollo
 
 ```powershell
 databricks auth login --host https://dbc-cbc2bb58-ee6e.cloud.databricks.com
 databricks bundle validate -t development
 databricks bundle deploy -t development
-databricks bundle run -t development airline_job
+databricks bundle run -t development retail_job
 ```
 
-Antes de ejecutar el pipeline se carga `data/cdc/batch_1.json` en el Volume `airline_cdc`. `batch_2.json` se reserva para la prueba funcional SCD2.
+El primer lote se genera ejecutando `sql/generate_batch_1.sql` después de crear
+el schema y el Volume. Tras la primera ejecución se carga `batch_2.json` en la
+raíz del Volume y se vuelve a ejecutar el Job para demostrar el historial SCD2.
 
-## Estrategia Git
+## Ambientes y estrategia Git
 
-- `feature/*`: cambios reales de código.
-- `dev`: integración y despliegue al catálogo de desarrollo.
-- `main`: producción; recibe cambios mediante Pull Request desde `dev`.
-
-Los workflows requieren GitHub Environments `dev` y `prod`, credenciales OAuth M2M y la variable `CI_ENABLED=true`.
+- `feature/*` o `codex/*`: desarrollo aislado.
+- `dev`: integración y despliegue a `dab_lab_dev`.
+- `main`: producción en `dab_lab_prod`, mediante Pull Request desde `dev`.
+- GitHub Environments: `dev` y `prod` con credenciales OAuth M2M.
+- Los workflows permanecen protegidos por `CI_ENABLED`; debe establecerse en
+  `true` cuando los secretos estén configurados.

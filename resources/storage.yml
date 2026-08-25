@@ -3,12 +3,12 @@ resources:
     project_schema:
       name: ${var.schema}
       catalog_name: ${var.catalog}
-      comment: Governed airline performance project objects for ${bundle.target}.
+      comment: Governed retail order analytics objects for ${bundle.target}.
 
   volumes:
-    airline_cdc_volume:
-      name: airline_cdc
+    product_cdc_volume:
+      name: product_cdc
       catalog_name: ${var.catalog}
       schema_name: ${resources.schemas.project_schema.name}
       volume_type: MANAGED
-      comment: Synthetic airline CDC files used by Auto Loader and AUTO CDC.
+      comment: Student-generated product portfolio CDC files used by Auto Loader and AUTO CDC.

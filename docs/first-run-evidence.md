@@ -1,46 +1,70 @@
-# Evidencia técnica de la primera ejecución
+# Evidencia de ejecución en desarrollo
 
-Fecha: 2026-08-24 (America/Costa_Rica)
+Fecha de prueba: 24 de agosto de 2026, zona horaria de Costa Rica.
 
-## Recursos de development
+## Recursos desplegados
 
-- Pipeline: `b9104f7b-4016-485b-8e28-d46c63dd5c96`
-- Job: `464705070988459`
-- Catálogo y esquema: `dab_lab_dev.dev_luis_acuna11_airline_luis_acuna`
-- Volume CDC: `airline_cdc`
+- Catálogo y schema: `dab_lab_dev.dev_luis_acuna11_retail_luis_acuna`.
+- Volume CDC: `product_cdc`.
+- Pipeline ID: `74146ccc-f59f-4acc-adaf-711f1c5233bc`.
+- Job ID: `25235949448081`.
+- Dashboard ID: `01f1a02a3b671f0384f43f3748b05845`.
+- Fuente: `databricks_simulated_retail_customer_data.v01.sales_orders`.
 
-## Pipeline con batch 1
+## Lote 1
 
-La actualización completa `0f6ba186-9b28-46a0-b7ec-86726a596bfc` terminó en `COMPLETED`.
-En el Volume solo estaba presente `batch_1.json`.
-
-Conteos comprobados mediante Databricks SQL, statement
-`01f1a01a-d5d5-1481-9198-1156fcd0cc4b`:
+- Actualización full refresh: `627d2616-e6ad-472e-812f-b9eaa3f3dc25`, completada.
+- Ejecución del Job: `552882189776917`, `SUCCESS`.
 
 | Objeto | Filas |
 |---|---:|
-| `bronze_flights` | 2,710,845 |
-| `bronze_airline_cdc` | 10 |
-| `dim_airline` | 10 |
-| `dim_airline` vigente (`__END_AT IS NULL`) | 10 |
-| `silver_flights` | 2,710,845 |
-| `gold_airline_daily` | 2,710,845 |
-| `gold_airline_monthly` | 22,959 |
+| `bronze_orders` | 4,074 |
+| `bronze_product_cdc` | 99 |
+| `dim_product` versiones | 99 |
+| `dim_product` vigentes | 99 |
+| `silver_order_items` | 7,997 |
+| `gold_retail_order_items` | 7,997 |
+| `gold_retail_monthly` | 427 |
 
-## Job orquestador
+Ingreso bruto comprobado: `10,458,619`.
 
-La corrida `578230174624557` terminó en `SUCCESS`.
+## Expectations
 
-- `run_airline_pipeline`: `SUCCESS`.
-- `validate_gold`: `SUCCESS`.
-- `gold_has_rows`: resultado `true`.
-- `publish_ready`: `SUCCESS`.
-- `publish_blocked`: `SKIPPED`, al no corresponder a la condición.
+El Event Log registró para `silver_order_items`:
 
-La primera tentativa reveló que `client: "1"` no era compatible con los
-notebooks serverless de este workspace. Se eliminó esa fijación obsoleta y el Job
-pasó a usar el entorno serverless predeterminado, única modalidad admitida por el
-workspace.
+| Expectation | Aprobados | Fallidos | Comportamiento |
+|---|---:|---:|---|
+| `valid_order_key` | 7,997 | 0 | FAIL UPDATE |
+| `valid_product_key` | 7,997 | 0 | DROP ROW |
+| `valid_commercial_values` | 7,997 | 0 | WARN |
 
-La corrida posterior `747737519698738` validó además el `ForEach`: tres
-iteraciones programadas y tres exitosas sobre Bronze, Silver y Gold.
+Consulta de evidencia: statement `01f1a029-603f-1364-bce2-119aed7b4ed6`.
+
+## Lote 2
+
+- Ejecución del Job: `665779803870146`, `SUCCESS`.
+- CDC acumulado: 102 eventos.
+- Dimensión: 101 versiones, 99 vigentes.
+
+Resultados SCD2:
+
+- `AVqVGaCCU2_QcyX9Ozcf`: `strategic` desde `2019-08-01` hasta
+  `2019-11-15`; `critical` vigente desde `2019-11-15`.
+- `SYN-CONTROL-PRODUCT`: versión cerrada en `2019-11-15`.
+- `SYN-NEW-PRODUCT`: versión vigente desde `2019-11-15`.
+
+La Metric View mostró la reclasificación sin cambiar el total de ingresos:
+
+| Nivel | Ingreso total |
+|---|---:|
+| `critical` | 1,084,124 |
+| `strategic` | 3,861,893 |
+| `managed` | 3,959,339 |
+| `standard` | 1,553,263 |
+
+## Enlaces
+
+- Pipeline: <https://dbc-cbc2bb58-ee6e.cloud.databricks.com/pipelines/74146ccc-f59f-4acc-adaf-711f1c5233bc?w=7474647652788276>
+- Job: <https://dbc-cbc2bb58-ee6e.cloud.databricks.com/jobs/25235949448081?w=7474647652788276>
+- Dashboard: <https://dbc-cbc2bb58-ee6e.cloud.databricks.com/dashboardsv3/01f1a02a3b671f0384f43f3748b05845/published?w=7474647652788276>
+- Schema: <https://dbc-cbc2bb58-ee6e.cloud.databricks.com/explore/data/dab_lab_dev/dev_luis_acuna11_retail_luis_acuna?w=7474647652788276>
