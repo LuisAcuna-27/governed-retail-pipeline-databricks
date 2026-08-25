@@ -1,7 +1,7 @@
 resources:
   jobs:
-    weather_job:
-      name: ${bundle.target}-${var.student_name}-weather-job
+    airline_job:
+      name: ${bundle.target}-${var.student_name}-airline-job
       parameters:
         - name: environment
           default: ${bundle.target}
@@ -18,14 +18,14 @@ resources:
           - ${var.notification_email}
         no_alert_for_skipped_runs: false
       tasks:
-        - task_key: run_weather_pipeline
+        - task_key: run_airline_pipeline
           pipeline_task:
-            pipeline_id: ${resources.pipelines.weather_pipeline.id}
+            pipeline_id: ${resources.pipelines.airline_pipeline.id}
             full_refresh: false
 
         - task_key: validate_gold
           depends_on:
-            - task_key: run_weather_pipeline
+            - task_key: run_airline_pipeline
           notebook_task:
             notebook_path: ../src/validate_gold.py
             base_parameters:
@@ -70,6 +70,6 @@ resources:
             client: "1"
 
       tags:
-        project: governed-weather
+        project: governed-airline-performance
         student: ${var.student_name}
         environment: ${bundle.target}

@@ -3,12 +3,12 @@ resources:
     project_schema:
       name: ${var.schema}
       catalog_name: ${var.catalog}
-      comment: Governed weather project objects for ${bundle.target}.
+      comment: Governed airline performance project objects for ${bundle.target}.
 
   volumes:
-    station_cdc_volume:
-      name: station_cdc
+    airline_cdc_volume:
+      name: airline_cdc
       catalog_name: ${var.catalog}
       schema_name: ${resources.schemas.project_schema.name}
       volume_type: MANAGED
-      comment: Synthetic station CDC files used by Auto Loader and AUTO CDC.
+      comment: Synthetic airline CDC files used by Auto Loader and AUTO CDC.

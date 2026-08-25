@@ -2,15 +2,15 @@
 
 ## Objetivo
 
-Construir y demostrar un pipeline gobernado de observaciones meteorológicas que responda qué estaciones y zonas del Caribe y del corredor tropical americano presentaron mayor exposición histórica a calor extremo y precipitación intensa entre 2022 y febrero de 2024.
+Construir y demostrar un pipeline gobernado que identifique las aerolíneas, rutas y meses con mayor riesgo operativo de retrasos, cancelaciones y desvíos durante el primer semestre de 1999.
 
 ## Alcance de datos
 
-- Fuente de solo lectura: NOAA GHCN-Daily desde Databricks Marketplace.
-- Filtro reproducible: `date >= 2022-01-01`, latitud `[5, 25]`, longitud `[-100, -60]`.
-- Volumen esperado: aproximadamente 114 mil observaciones.
-- Llave natural del hecho: `station + date`.
-- Dimensión SCD2: portafolio gobernado de estaciones, llave `station_id`.
+- Fuente de solo lectura: Airline Performance Data desde Databricks Marketplace.
+- Extracto reproducible: `Year = 1999` y `Month BETWEEN 1 AND 6`.
+- Volumen esperado: aproximadamente 2.5 millones de vuelos.
+- Llave natural: fecha, aerolínea, vuelo, origen, destino y hora programada.
+- Dimensión SCD2: portafolio gobernado de aerolíneas, llave `carrier_code`.
 
 ## Fases
 
@@ -26,10 +26,11 @@ Construir y demostrar un pipeline gobernado de observaciones meteorológicas que
 ## Criterios de aceptación
 
 - `databricks bundle validate` exitoso en development y production.
-- Pipeline ejecutado con Event Log y al menos dos expectations con comportamientos distintos.
-- Evidencia SCD2 antes y después del segundo batch.
-- Job exitoso y rama condicional visible.
+- Bronze del hecho y del CDC implementadas como Streaming Tables.
+- AUTO CDC SCD2 y al menos dos expectations con comportamientos distintos.
+- Evidencia de la dimensión antes y después del segundo batch.
+- Job exitoso con rama condicional visible.
 - Metric View con al menos dos dimensiones y dos medidas.
 - Dashboard con al menos dos visualizaciones.
 - PR feature -> dev y dev -> main con checks y despliegues visibles.
-- Acceso docente limitado a Metric View/Gold o dashboard de producción.
+- Acceso docente limitado al objeto de producción autorizado.

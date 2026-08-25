@@ -2,24 +2,26 @@
 
 ## Dataset y caso de negocio
 
-Se eligió NOAA GHCN-Daily porque ofrece volumen, cobertura temporal, coordenadas y métricas meteorológicas aptas para agregación. El extracto regional es determinístico y reduce el costo de ejecución sin convertir el dataset en una muestra arbitraria.
+Se evaluó primero NOAA GHCN-Daily por su actualidad y riqueza climática. La exploración confirmó buena calidad, pero la ejecución del pipeline devolvió `DS_TIME_TRAVEL_NOT_PERMITTED`: el proveedor permite consultas batch, pero no comparte el historial Delta requerido por `STREAM()`. La alternativa batch también fue rechazada por `CREATE_APPEND_ONCE_FLOW_FROM_BATCH_QUERY_NOT_ALLOWED`. Como la rúbrica exige una Bronze Streaming Table del hecho, se aplicó el plan de contingencia documentado.
+
+Airline Performance Data sí admite streaming desde Marketplace y contiene 10,602,522 filas. Se utiliza un extracto determinístico del primer semestre de 1999. La antigüedad se reconoce expresamente: el dashboard responde una pregunta histórica y no pretende describir operaciones actuales.
 
 ## Dimensión CDC
 
-La dimensión representa el portafolio de estaciones gobernadas. Sus atributos `coverage_tier` y `monitoring_status` pueden cambiar con el tiempo y justifican un historial SCD Tipo 2. El batch 2 actualiza Juan Santamaría, inserta Tampico y elimina Puerto Lempira.
+La dimensión representa el portafolio gobernado de aerolíneas. El batch 2 actualiza American Airlines, inserta Southwest Airlines y elimina `ZZ`, un registro sintético de control creado únicamente para demostrar el delete sin retirar una aerolínea real del análisis Gold.
 
 ## Capas
 
 - Bronze conserva el hecho del Marketplace y los eventos CDC del Volume.
-- Silver normaliza tipos, unidades, nombres, duplicados y reglas de calidad.
-- Gold une el hecho con la versión vigente de `dim_station` y calcula métricas mensuales.
-- La Metric View expone nombres de negocio y es la única fuente del dashboard.
+- Silver tipa fechas y métricas, normaliza códigos, elimina duplicados y deriva ruta, hora y resultado operativo.
+- Gold une los vuelos con la versión vigente de `dim_airline` y calcula métricas mensuales por aerolínea y ruta.
+- La Metric View expone medidas y dimensiones de negocio y será la única fuente del dashboard.
 
 ## Expectations
 
-- Estación nula: `DROP ROW`, porque una observación sin llave no puede relacionarse ni deduplicarse.
-- Coordenadas inválidas: `FAIL UPDATE`, porque invalidan el alcance geográfico completo del pipeline.
-- Temperatura máxima menor que mínima: `WARN`, porque debe observarse como problema de calidad sin perder automáticamente el registro fuente.
+- Ruta sin origen o destino: `DROP ROW`, porque no puede alimentar agregaciones por ruta.
+- Distancia no positiva: `FAIL UPDATE`, porque indicaría corrupción de una métrica estructural del hecho.
+- Retraso de llegada ausente en un vuelo no cancelado ni desviado: `WARN`, porque debe observarse sin descartar automáticamente el registro.
 
 ## Pendiente de completar con evidencia
 

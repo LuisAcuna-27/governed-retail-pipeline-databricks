@@ -1,11 +1,11 @@
 # Checklist de evidencias
 
 - [ ] Pipeline ejecutado con batch 1.
-- [ ] Estado inicial de `dim_station` SCD2.
+- [ ] Estado inicial de `dim_airline` SCD2.
 - [ ] Pipeline ejecutado con batch 2.
-- [ ] Insert de Tampico visible.
-- [ ] Dos versiones de Juan Santamaría visibles.
-- [ ] Versión de Puerto Lempira cerrada/eliminada.
+- [ ] Insert de Southwest visible.
+- [ ] Dos versiones de American Airlines visibles.
+- [ ] Registro sintético `ZZ` cerrado/eliminado.
 - [ ] Event Log y métricas de expectations.
 - [ ] Gold y Metric View consultables.
 - [ ] Dashboard con dos visualizaciones y texto explicativo.

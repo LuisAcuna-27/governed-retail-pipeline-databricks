@@ -1,7 +1,7 @@
 resources:
   pipelines:
-    weather_pipeline:
-      name: ${bundle.target}-${var.student_name}-weather-pipeline
+    airline_pipeline:
+      name: ${bundle.target}-${var.student_name}-airline-pipeline
       catalog: ${var.catalog}
       schema: ${resources.schemas.project_schema.name}
       serverless: true
@@ -11,18 +11,18 @@ resources:
       photon: true
       libraries:
         - notebook:
-            path: ../src/weather_pipeline.sql
+            path: ../src/airline_pipeline.sql
       configuration:
         catalog: ${var.catalog}
         schema: ${resources.schemas.project_schema.name}
         student_name: ${var.student_name}
         source_table: ${var.source_table}
-        cdc_volume_path: /Volumes/${var.catalog}/${resources.schemas.project_schema.name}/${resources.volumes.station_cdc_volume.name}
+        cdc_volume_path: /Volumes/${var.catalog}/${resources.schemas.project_schema.name}/${resources.volumes.airline_cdc_volume.name}
       event_log:
         catalog: ${var.catalog}
         schema: ${resources.schemas.project_schema.name}
-        name: weather_pipeline_event_log
+        name: airline_pipeline_event_log
       tags:
-        project: governed-weather
+        project: governed-airline-performance
         student: ${var.student_name}
         environment: ${bundle.target}
