@@ -1,5 +1,5 @@
 bundle:
-  name: governed_weather_pipeline
+  name: governed_retail_pipeline
 
 include:
   - resources/*.yml
@@ -9,7 +9,7 @@ variables:
     description: Unity Catalog catalog used by the target environment.
   schema:
     description: Schema that contains the project objects.
-    default: weather_luis_acuna
+    default: retail_luis_acuna
   student_name:
     description: Student identifier required by the pipeline rubric.
     default: luis_acuna
@@ -17,8 +17,8 @@ variables:
     description: Email used for Lakeflow Job notifications.
     default: luis.acuna11@ulatina.net
   source_table:
-    description: Read-only NOAA Marketplace source table.
-    default: rearc_daily_weather_observations_noaa.esg_noaa_ghcn.noaa_ghcn_daily
+    description: Read-only retail orders Marketplace source table.
+    default: databricks_simulated_retail_customer_data.v01.sales_orders
   row_count_threshold:
     description: Minimum number of rows required in the Gold table.
     default: "1"
@@ -34,7 +34,7 @@ targets:
       catalog: dab_lab_dev
     resources:
       pipelines:
-        weather_pipeline:
+        retail_pipeline:
           development: true
 
   production:
@@ -46,5 +46,5 @@ targets:
       catalog: dab_lab_prod
     resources:
       pipelines:
-        weather_pipeline:
+        retail_pipeline:
           development: false

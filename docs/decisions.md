@@ -1,31 +1,53 @@
-# Documento de decisiones - borrador vivo
+# Registro de decisiones
 
-## Dataset y caso de negocio
+## D1. Migrar a Simulated Retail Customer Data
 
-Se eligió NOAA GHCN-Daily porque ofrece volumen, cobertura temporal, coordenadas y métricas meteorológicas aptas para agregación. El extracto regional es determinístico y reduce el costo de ejecución sin convertir el dataset en una muestra arbitraria.
+La alternativa aérea funcionaba técnicamente, pero complicaba la explicación:
+el número de vuelo no era único, la fuente era antigua y la relación con una
+dimensión sintética resultaba menos intuitiva. Se migró a retail porque
+`sales_orders` ofrece `order_number`, productos embebidos y `product_id`, una
+unión natural entre hechos y la dimensión gobernada.
 
-## Dimensión CDC
+La fuente retail también es histórica y simulada. Esto es aceptable porque la
+pregunta se presenta como caso analítico de demostración y no como información
+comercial vigente. Se documenta expresamente para evitar conclusiones engañosas.
 
-La dimensión representa el portafolio de estaciones gobernadas. Sus atributos `coverage_tier` y `monitoring_status` pueden cambiar con el tiempo y justifican un historial SCD Tipo 2. El batch 2 actualiza Juan Santamaría, inserta Tampico y elimina Puerto Lempira.
+## D2. Usar solamente `sales_orders`
 
-## Capas
+El listing también contiene `customers` y `sales`, pero no son necesarias para
+cumplir el alcance. Reducir la fuente a una sola tabla mantiene el linaje claro:
+orden -> línea de producto -> dimensión de producto -> métricas mensuales.
 
-- Bronze conserva el hecho del Marketplace y los eventos CDC del Volume.
-- Silver normaliza tipos, unidades, nombres, duplicados y reglas de calidad.
-- Gold une el hecho con la versión vigente de `dim_station` y calcula métricas mensuales.
-- La Metric View expone nombres de negocio y es la única fuente del dashboard.
+## D3. CDC separado del hecho
 
-## Expectations
+`sales_orders` es una fuente de hechos de solo lectura. El estudiante genera la
+dimensión `dim_product` en dos lotes JSON y la mantiene con AUTO CDC SCD2:
 
-- Estación nula: `DROP ROW`, porque una observación sin llave no puede relacionarse ni deduplicarse.
-- Coordenadas inválidas: `FAIL UPDATE`, porque invalidan el alcance geográfico completo del pipeline.
-- Temperatura máxima menor que mínima: `WARN`, porque debe observarse como problema de calidad sin perder automáticamente el registro fuente.
+- llave de negocio: `product_id`;
+- secuencia: `sequence_ts`;
+- delete: `operation = 'DELETE'`;
+- lote 1: 98 productos reales y un control sintético;
+- lote 2: reclasificación, alta nueva y retiro del control.
 
-## Pendiente de completar con evidencia
+El producto de control evita borrar del análisis un producto real únicamente
+para demostrar el comportamiento DELETE.
 
-- Capturas batch 1/batch 2 y explicación de `__START_AT`/`__END_AT`.
-- Grafo y corrida exitosa del Job.
-- Pull Requests y GitHub Actions.
-- Dashboard y principales insights.
-- Grant de Unity Catalog.
-- Reflexión final.
+## D4. Conservar el snapshot más reciente
+
+La fuente contiene 4,074 filas para 4,000 números de orden. Silver aplica
+`ROW_NUMBER()` por `order_number`, ordenado por `order_datetime DESC`, antes de
+parsear y explotar `ordered_products`. Así la deduplicación ocurre en el grano
+correcto y produce 7,997 líneas de producto.
+
+## D5. Calidad con tres comportamientos
+
+- `valid_order_key`: `FAIL UPDATE`, porque una línea sin orden invalida la carga.
+- `valid_product_key`: `DROP ROW`, porque no puede unirse a la dimensión.
+- `valid_commercial_values`: `WARN`, para observar cantidades o precios
+  inválidos sin ocultar el resto de la actualización.
+
+## D6. Estado anterior preservado
+
+La rama remota `feature/airline-fallback` conserva el prototipo aéreo. Sus
+recursos de Databricks no se destruyeron durante la migración; el proyecto retail
+se desplegó con un nombre de Bundle y schema independientes.

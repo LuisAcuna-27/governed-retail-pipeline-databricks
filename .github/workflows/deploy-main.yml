@@ -21,4 +21,4 @@ jobs:
       - uses: actions/checkout@v4
       - uses: databricks/setup-cli@main
       - run: databricks bundle deploy -t production
-      - run: databricks bundle run -t production weather_job
+      - run: databricks bundle run -t production retail_job

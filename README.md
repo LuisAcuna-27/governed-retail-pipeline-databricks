@@ -1,73 +1,89 @@
-# Governed Weather Pipeline on Databricks
+# Governed Retail Order Analytics Pipeline on Databricks
 
 Proyecto final del Módulo 3 del Técnico en Ingeniería de Datos con Databricks.
-
-El repositorio implementa un pipeline gobernado de observaciones meteorológicas NOAA con arquitectura medallion, Lakeflow Declarative Pipelines, CDC con SCD Tipo 2, Metric Views, dashboard AI/BI y CI/CD mediante Databricks Asset Bundles y GitHub Actions.
+Implementa una arquitectura medallion gobernada con Lakeflow Declarative
+Pipelines, Auto Loader, AUTO CDC SCD Tipo 2, Metric Views, Lakeflow Jobs,
+Databricks Asset Bundles y GitHub Actions.
 
 ## Pregunta de negocio
 
-> ¿Qué estaciones y zonas del Caribe y del corredor tropical americano presentaron mayor exposición histórica a calor extremo y precipitación intensa entre 2022 y febrero de 2024?
+> ¿Cómo se distribuyen los ingresos, unidades y pedidos mensuales entre los
+> productos y niveles del portafolio, y cómo cambia el análisis cuando un
+> producto se reclasifica?
 
-## Fuente principal
+## Datos seleccionados
 
-- Marketplace: `Daily Weather Observations | NOAA`
-- Tabla: `rearc_daily_weather_observations_noaa.esg_noaa_ghcn.noaa_ghcn_daily`
-- Extracto reproducible: fecha desde `2022-01-01`, latitud entre 5 y 25 y longitud entre -100 y -60.
-- Perfil del extracto: aproximadamente 114,439 observaciones, 214 estaciones y 19 prefijos territoriales.
-- Dimensión CDC: portafolio gobernado de estaciones meteorológicas.
+- Listing: `Simulated Retail Customer Data` de Databricks Marketplace.
+- Tabla de hechos: `databricks_simulated_retail_customer_data.v01.sales_orders`.
+- Fuente: 4,074 snapshots de órdenes; el pipeline conserva el snapshot más
+  reciente de 4,000 órdenes y genera 7,997 líneas de producto.
+- Periodo de los datos: 2019-08-01 a 2019-11-14. Es un escenario simulado e
+  histórico; no se presenta como desempeño comercial actual.
+- Dimensión propia: portafolio gobernado de productos, generado por el
+  estudiante y actualizado mediante dos lotes JSON.
+
+La tabla `sales_orders` se adapta mejor a la rúbrica que la opción aérea: tiene
+una llave de orden explícita, productos embebidos que permiten modelar el grano
+de línea y una unión natural con la dimensión CDC por `product_id`.
 
 ## Arquitectura
 
 ```text
-NOAA Marketplace --------------------------> bronze_weather
-                                                    |
-JSON CDC en Unity Catalog Volume ----------> bronze_station_cdc
-                                                    |
-                                      silver_weather + dim_station SCD2
-                                                    |
-                                         gold_weather_monthly
-                                                    |
-                                           weather_metrics
-                                                    |
-                                           Dashboard AI/BI
+Marketplace sales_orders ----------------------> bronze_orders (streaming)
+                                                        |
+JSON en Unity Catalog Volume -> Auto Loader -> bronze_product_cdc (streaming)
+                                                        |
+                               silver_order_items + dim_product SCD2
+                                                        |
+                                      gold_retail_order_items
+                                                        |
+                                        gold_retail_monthly
+                                                        |
+                                       retail_product_metrics
+                                                        |
+                                            Dashboard AI/BI
 ```
 
-Los catálogos `dab_lab_dev` y `dab_lab_prod` separan los ambientes dentro del mismo workspace.
+`sales_orders` es el hecho y no recibe CDC. El CDC se aplica a la dimensión
+independiente `dim_product`; su llave de negocio es `product_id` y el orden de
+los cambios lo controla `sequence_ts`.
 
-## Estructura
+## Componentes principales
 
-```text
-.
-├── databricks.yml
-├── resources/              # Pipeline, Job, schema y Volume como código
-├── src/                    # Transformaciones y notebooks del Job
-├── sql/                    # Definición de la Metric View
-├── data/cdc/               # Lotes sintéticos insert/update/delete
-├── docs/                   # Plan, decisiones, arquitectura y evidencias
-└── .github/workflows/      # Validación y despliegue dev/prod
-```
+- [`src/retail_pipeline.sql`](src/retail_pipeline.sql): Bronze, Silver, SCD2 y Gold.
+- [`sql/generate_batch_1.sql`](sql/generate_batch_1.sql): lote inicial generado
+  a partir de los 98 productos reales, más un registro sintético de control.
+- [`data/cdc/batch_2.json`](data/cdc/batch_2.json): UPDATE, INSERT y DELETE.
+- [`sql/metric_view.sql`](sql/metric_view.sql): capa semántica gobernada.
+- [`dashboards/retail_dashboard.lvdash.json`](dashboards/retail_dashboard.lvdash.json):
+  dashboard AI/BI que consulta la Metric View.
+- [`sql/explore_dataset.sql`](sql/explore_dataset.sql): recorrido reproducible.
+- [`docs/dataset-walkthrough.md`](docs/dataset-walkthrough.md): explicación del
+  dataset, llaves, capas y relación con la rúbrica.
+- [`docs/first-run-evidence.md`](docs/first-run-evidence.md): ejecuciones y
+  resultados comprobados en Databricks.
 
-## Requisitos locales
-
-- Databricks CLI autenticado contra el workspace.
-- Acceso al catálogo compartido de NOAA.
-- Permisos para crear schemas, Volumes, pipelines y Jobs en los catálogos dev/prod.
-
-## Validación y despliegue
+## Despliegue en desarrollo
 
 ```powershell
 databricks auth login --host https://dbc-cbc2bb58-ee6e.cloud.databricks.com
 databricks bundle validate -t development
 databricks bundle deploy -t development
-databricks bundle run -t development weather_job
+databricks bundle run -t development retail_job
 ```
 
-Antes de ejecutar el pipeline se deben cargar `data/cdc/batch_1.json` y, durante la prueba funcional, `data/cdc/batch_2.json` al Volume `station_cdc` del ambiente correspondiente.
+El primer lote se genera ejecutando `sql/generate_batch_1.sql` después de crear
+el schema y el Volume. El Job ejecuta esta inicialización automáticamente y la
+omite de forma idempotente cuando `batch_1` ya existe. También crea o reemplaza
+la Metric View después del pipeline. Tras la primera ejecución se carga
+`batch_2.json` en la raíz del Volume y se vuelve a ejecutar el Job para demostrar
+el historial SCD2.
 
-## Estrategia Git
+## Ambientes y estrategia Git
 
-- `dev`: integración y despliegue al catálogo de desarrollo.
-- `main`: producción; solo recibe cambios mediante Pull Request desde `dev`.
-- Las features se desarrollan en branches `feature/*` y se integran mediante Pull Request.
-
-Los workflows requieren los GitHub Environments `dev` y `prod`, sus credenciales OAuth M2M y la variable de repositorio `CI_ENABLED=true`.
+- `feature/*` o `codex/*`: desarrollo aislado.
+- `dev`: integración y despliegue a `dab_lab_dev`.
+- `main`: producción en `dab_lab_prod`, mediante Pull Request desde `dev`.
+- GitHub Environments: `dev` y `prod` con credenciales OAuth M2M.
+- Los workflows permanecen protegidos por `CI_ENABLED` y usan credenciales OAuth
+  M2M almacenadas por separado en los Environments `dev` y `prod`.
