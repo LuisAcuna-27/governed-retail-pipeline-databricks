@@ -45,6 +45,12 @@ targets:
     variables:
       catalog: dab_lab_prod
     resources:
+      dashboards:
+        retail_dashboard:
+          embed_credentials: true
+          permissions:
+            - level: CAN_READ
+              user_name: jg.moricem@gmail.com
       pipelines:
         retail_pipeline:
           development: false
