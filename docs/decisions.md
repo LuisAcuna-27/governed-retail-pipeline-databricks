@@ -51,3 +51,27 @@ correcto y produce 7,997 líneas de producto.
 La rama remota `feature/airline-fallback` conserva el prototipo aéreo. Sus
 recursos de Databricks no se destruyeron durante la migración; el proyecto retail
 se desplegó con un nombre de Bundle y schema independientes.
+
+## D7. Compartir únicamente el dashboard de producción
+
+El acceso docente se limita al dashboard
+`production-luis_acuna-retail-dashboard`. El usuario
+`jg.moricem@gmail.com` recibe `CAN_READ` y el dashboard publicado usa
+credenciales embebidas del principal de producción. Así puede consultar las
+visualizaciones sin recibir acceso directo a Bronze, Silver, Gold, al catálogo
+de desarrollo, al pipeline ni al Job.
+
+La configuración queda declarada en `resources/dashboard.yml` para que el
+permiso sea reproducible en cada despliegue del Bundle.
+
+## D8. Repositorio público y ramas protegidas
+
+El repositorio se publica después de revisar los archivos rastreados y todo el
+historial en busca de tokens, secretos, claves privadas o archivos de
+credenciales. Las credenciales OAuth M2M permanecen únicamente en GitHub
+Environment secrets.
+
+Las ramas `dev` y `main` se protegen para exigir Pull Request y su respectivo
+check de validación antes del merge. Esto permite al docente revisar el
+historial y las ejecuciones de GitHub Actions sin recibir credenciales o acceso
+adicional al workspace.

@@ -33,3 +33,6 @@
 - [x] `CI_ENABLED=true` y validación de PR comprobada.
 - [x] Despliegue y Job de desarrollo ejecutados desde GitHub Actions.
 - [x] Despliegue y Job de producción ejecutados desde GitHub Actions.
+- [x] Dashboard de producción compartido con `jg.moricem@gmail.com` como
+  `CAN_READ`, sin acceso docente a las capas internas.
+- [x] Dashboard publicado con credenciales embebidas para consumo gobernado.

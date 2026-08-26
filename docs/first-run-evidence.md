@@ -90,11 +90,37 @@ El workflow de desarrollo demostró la creación del lote 1 en un schema limpio,
 el despliegue del Bundle y la ejecución completa del Job sin intervención
 manual. La promoción `dev -> main` repitió la misma prueba en `dab_lab_prod`.
 
+La promoción final quedó registrada en:
+
+- PR `codex/retail-migration -> dev`: `#5`.
+- Validación de PR a dev: GitHub Actions run `32803964144`, `SUCCESS`.
+- Desarrollo: GitHub Actions run `32803982974`, `SUCCESS`.
+- PR `dev -> main`: `#6`.
+- Validación de PR a main: GitHub Actions run `32804186576`, `SUCCESS`.
+- Producción: GitHub Actions run `32804204987`, `SUCCESS`.
+- Job de producción: `366611526779544`.
+- Pipeline de producción: `452a8dc0-d3a0-48e8-b797-a8c69b9588b1`.
+- Dashboard de producción: `01f1a0318a5f197e8dcd4375b74d85b2`.
+
+## Evidencia de gobernanza
+
+- Usuario docente: `jg.moricem@gmail.com`.
+- Objeto compartido: dashboard
+  `production-luis_acuna-retail-dashboard`.
+- Permiso: `CAN_READ`.
+- Credenciales del dashboard publicado: embebidas por el principal de
+  producción.
+- No se otorgó acceso docente a Bronze, Silver, Gold, desarrollo, pipeline ni
+  Job.
+
 ## Enlaces
 
 - Pipeline: <https://dbc-cbc2bb58-ee6e.cloud.databricks.com/pipelines/74146ccc-f59f-4acc-adaf-711f1c5233bc?w=7474647652788276>
 - Job: <https://dbc-cbc2bb58-ee6e.cloud.databricks.com/jobs/25235949448081?w=7474647652788276>
 - Dashboard: <https://dbc-cbc2bb58-ee6e.cloud.databricks.com/dashboardsv3/01f1a02a3b671f0384f43f3748b05845/published?w=7474647652788276>
+- Dashboard de producción: <https://dbc-cbc2bb58-ee6e.cloud.databricks.com/dashboardsv3/01f1a0318a5f197e8dcd4375b74d85b2/published?w=7474647652788276>
 - Schema: <https://dbc-cbc2bb58-ee6e.cloud.databricks.com/explore/data/dab_lab_dev/dev_luis_acuna11_retail_luis_acuna?w=7474647652788276>
 - GitHub Actions dev: <https://github.com/LuisAcuna-27/governed-retail-pipeline-databricks/actions/runs/32803455440>
 - GitHub Actions prod: <https://github.com/LuisAcuna-27/governed-retail-pipeline-databricks/actions/runs/32803696618>
+- GitHub Actions dev final: <https://github.com/LuisAcuna-27/governed-retail-pipeline-databricks/actions/runs/32803982974>
+- GitHub Actions prod final: <https://github.com/LuisAcuna-27/governed-retail-pipeline-databricks/actions/runs/32804204987>

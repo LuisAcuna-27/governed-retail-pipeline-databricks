@@ -87,3 +87,12 @@ el historial SCD2.
 - GitHub Environments: `dev` y `prod` con credenciales OAuth M2M.
 - Los workflows permanecen protegidos por `CI_ENABLED` y usan credenciales OAuth
   M2M almacenadas por separado en los Environments `dev` y `prod`.
+
+## Acceso docente gobernado
+
+El dashboard de producción está publicado con credenciales embebidas y comparte
+únicamente permiso `CAN_READ` con `jg.moricem@gmail.com`. Este acceso no concede
+permisos directos sobre Bronze, Silver, Gold, el catálogo de desarrollo, el
+pipeline ni el Job.
+
+- Dashboard de producción: <https://dbc-cbc2bb58-ee6e.cloud.databricks.com/dashboardsv3/01f1a0318a5f197e8dcd4375b74d85b2/published?w=7474647652788276>
