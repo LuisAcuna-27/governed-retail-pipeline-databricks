@@ -26,3 +26,6 @@ Thumbs.db
 tmp/
 output/
 evidence/private/
+presentation/
+*.pptx
+GUIA_DEMO_PASO_A_PASO.md
