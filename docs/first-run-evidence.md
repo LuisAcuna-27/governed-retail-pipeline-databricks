@@ -92,7 +92,7 @@ manual. La promoción `dev -> main` repitió la misma prueba en `dab_lab_prod`.
 
 La promoción final quedó registrada en:
 
-- PR `codex/retail-migration -> dev`: `#5`.
+- PR de migración hacia `dev`: `#5`.
 - Validación de PR a dev: GitHub Actions run `32803964144`, `SUCCESS`.
 - Desarrollo: GitHub Actions run `32803982974`, `SUCCESS`.
 - PR `dev -> main`: `#6`.

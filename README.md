@@ -19,8 +19,8 @@ Databricks Asset Bundles y GitHub Actions.
   reciente de 4,000 órdenes y genera 7,997 líneas de producto.
 - Periodo de los datos: 2019-08-01 a 2019-11-14. Es un escenario simulado e
   histórico; no se presenta como desempeño comercial actual.
-- Dimensión propia: portafolio gobernado de productos, generado por el
-  estudiante y actualizado mediante dos lotes JSON.
+- Dimensión propia: portafolio gobernado de productos, definido para el
+  proyecto y actualizado mediante dos lotes JSON.
 
 La tabla `sales_orders` se adapta mejor a la rúbrica que la opción aérea: tiene
 una llave de orden explícita, productos embebidos que permiten modelar el grano
@@ -81,7 +81,7 @@ el historial SCD2.
 
 ## Ambientes y estrategia Git
 
-- `feature/*` o `codex/*`: desarrollo aislado.
+- `feature/*`: desarrollo aislado.
 - `dev`: integración y despliegue a `dab_lab_dev`.
 - `main`: producción en `dab_lab_prod`, mediante Pull Request desde `dev`.
 - GitHub Environments: `dev` y `prod` con credenciales OAuth M2M.
